@@ -1,20 +1,19 @@
-FROM gliderlabs/alpine:3.3
+FROM alpine:3.3
 MAINTAINER Brandon Papworth <brandon@papworth.me>
 
-ENV OPENRESTY__PREFIX=/opt/openresty \
-    OPENRESTY__VERSION=1.9.7.3 \
+ENV OPENRESTY__PREFIX=/etc/openresty \
+    OPENRESTY__VERSION=1.9.7.4 \
     NGINX__VERSION=1.9.7 \
-    NGINX__PREFIX=/opt/openresty/nginx \
-    NGINX__PID_PATH=/var/nginx/nginx.pid \
-    NGINX__LOCK_PATH=/var/nginx/nginx.lock \
-    NGINX__HTTP__LOG_PATH__ACCESS=/var/nginx/access.log \
-    NGINX__HTTP__LOG_PATH__ERROR=/var/nginx/error.log \
-    NGINX__HTTP__PROXY__TEMP_PATH=/var/nginx/proxy_temp \
-    NGINX__HTTP__CLIENT_BODY__TEMP_PATH=/var/nginx/client_body_temp \
-    NGINX__FCGI__PROXY__TEMP_PATH=/var/nginx/fastcgi_temp \
-    VAR__PREFIX=/var/nginx
+    NGINX__PREFIX=/etc/openresty/nginx \
+    NGINX__PID_PATH=/var/run/nginx/nginx.pid \
+    NGINX__LOCK_PATH=/var/run/nginx/nginx.lock \
+    NGINX__HTTP__LOG_PATH__ACCESS=/var/log/nginx/access.log \
+    NGINX__HTTP__LOG_PATH__ERROR=/var/log/nginx/error.log \
+    NGINX__HTTP__PROXY__TEMP_PATH=/var/tmp/nginx/tmp_proxy \
+    NGINX__HTTP__CLIENT_BODY__TEMP_PATH=/var/tmp/nginx/tmp_client_body \
+    NGINX__FCGI__PROXY__TEMP_PATH=/var/tmp/nginx/tmp_fcgi
 
-LABEL org.openresty.version="1.9.7.3" \
+LABEL org.openresty.version="1.9.7.4" \
       org.nginx.version="1.9.7"
 
 RUN ALPINE__BUILD_DEPS=" \
@@ -86,6 +85,14 @@ RUN ALPINE__BUILD_DEPS=" \
  && ln -sf $OPENRESTY__PREFIX/bin/resty /usr/local/bin/resty \
  && ln -sf $OPENRESTY__PREFIX/luajit/bin/luajit-* $OPENRESTY__PREFIX/luajit/bin/lua \
  && ln -sf $OPENRESTY__PREFIX/luajit/bin/luajit-* /usr/local/bin/lua \
+ && echo "docker-build-script: Creating folder '$OPENRESTY__PREFIX/lualib/util' for misc utilities" \
+ && mkdir -p $OPENRESTY__PREFIX/lualib/util \
+ && echo "docker-build-script: Creating folder '$OPENRESTY__PREFIX/lualib/generated' for runtime-generated lua files" \
+ && mkdir -p $OPENRESTY__PREFIX/lualib/generated \
+ && echo "docker-build-script: Creating placeholder '$OPENRESTY__PREFIX/lualib/generated/env_vars_available.lua'" \
+ && touch $OPENRESTY__PREFIX/lualib/generated/env_vars_available.lua \
+ && echo "docker-build-script: Creating placeholder '$NGINX__PREFIX/conf/env_vars_available.conf'" \
+ && touch $NGINX__PREFIX/conf/env_vars_available.conf \
  && echo "docker-build-script: Deleting Openresty build dependencies" \
  && apk del $ALPINE__BUILD_DEPS \
  && echo "docker-build-script: Installing Openresty runtime dependencies" \
@@ -97,12 +104,14 @@ RUN ALPINE__BUILD_DEPS=" \
 
 WORKDIR $NGINX__PREFIX/
 
-COPY includes/opt/openresty/nginx/conf/nginx.conf /opt/openresty/nginx/conf/nginx.conf
+VOLUME ["/var/log/nginx", "/var/run/nginx", "/var/tmp/nginx/tmp_proxy", "/var/tmp/nginx/tmp_client_body", "/var/tmp/nginx/tmp_fcgi"]
 
-COPY includes/docker-entrypoint.sh /docker-entrypoint.sh
+COPY artifacts/docker-entrypoint.sh /docker-entrypoint.sh
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
-COPY includes/data/openresty /data/openresty
+COPY artifacts/env.lua $OPENRESTY__PREFIX/lualib/util/env.lua
+COPY artifacts/nginx.conf $NGINX__PREFIX/conf/nginx.conf
+COPY artifacts/default.conf $NGINX__PREFIX/conf/sites_enabled/default.conf
 
 CMD ["nginx"]
