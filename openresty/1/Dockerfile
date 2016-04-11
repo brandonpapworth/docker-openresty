@@ -104,7 +104,7 @@ RUN ALPINE__BUILD_DEPS=" \
 
 WORKDIR $NGINX__PREFIX/
 
-VOLUME ["/var/log/nginx", "/var/run/nginx", "/var/tmp/nginx/tmp_proxy", "/var/tmp/nginx/tmp_client_body", "/var/tmp/nginx/tmp_fcgi"]
+VOLUME ["/var/log/nginx", "/var/run/nginx", "/var/tmp/nginx"]
 
 COPY artifacts/docker-entrypoint.sh /docker-entrypoint.sh
 
