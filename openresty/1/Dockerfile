@@ -70,10 +70,6 @@ RUN ALPINE__BUILD_DEPS=" \
     --with-http_realip_module \
     --with-http_v2_module \
     --with-http_mp4_module \
-    --without-http_ssi_module \
-    --without-http_userid_module \
-    --without-http_uwsgi_module \
-    --without-http_scgi_module \
     -j${NPROC} \
  && echo "docker-build-script: Compiling Openresty" \
  && make -j${NPROC} \
