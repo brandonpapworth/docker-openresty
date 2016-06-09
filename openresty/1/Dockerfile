@@ -1,4 +1,4 @@
-FROM alpine:3.3
+FROM alpine:3.4
 MAINTAINER Brandon Papworth <brandon@papworth.me>
 
 
@@ -6,6 +6,12 @@ ENV OPENRESTY__PREFIX=/etc/openresty \
     NGINX__PREFIX=/etc/openresty/nginx \
     NGINX__PID_PATH=/var/run/nginx/nginx.pid \
     NGINX__LOCK_PATH=/var/run/nginx/nginx.lock \
+    NGINX__ERROR_LOG_LEVEL=info \
+    NGINX__ERROR_LOG__CONF_FILE_PATH=/etc/openresty/nginx/error_log.conf \
+    NGINX__WORKER_CONNECTIONS=2048 \
+    NGINX__WORKER_CONNECTIONS__CONF_FILE_PATH=/etc/openresty/nginx/worker_connections.conf \
+    NGINX__WORKER_PROCESSES=auto \
+    NGINX__WORKER_PROCESSES__CONF_FILE_PATH=/etc/openresty/nginx/worker_connections.conf \
     NGINX__HTTP__LOG_PATH__ACCESS=/var/log/nginx/access.log \
     NGINX__HTTP__LOG_PATH__ERROR=/var/log/nginx/error.log \
     NGINX__HTTP__PROXY__TEMP_PATH=/var/tmp/nginx/tmp_proxy \
@@ -15,14 +21,14 @@ ENV OPENRESTY__PREFIX=/etc/openresty \
     NGINX__ENV__CONF_FILE_PATH=/etc/openresty/nginx/conf/env_vars_available.conf \
     NGINX__ENV__LUA_FILE_PATH=/etc/openresty/lualib/generated/env_vars_available.lua
 
-ENV OPENRESTY__VERSION=1.9.7.4 \
-    NGINX__VERSION=1.9.7 \
-    LUAJIT__VERSION=2.1.0-beta1 \
+ENV OPENRESTY__VERSION=1.9.15.1 \
+    NGINX__VERSION=1.9.15 \
+    LUAJIT__VERSION=2.1.0-beta2 \
     LUAROCKS__VERSION=2.3.0
 
-LABEL org.openresty.version="1.9.7.4" \
-      org.nginx.version="1.9.7" \
-      org.luajit.version="2.1.0-beta1" \
+LABEL org.openresty.version="1.9.15.1" \
+      org.nginx.version="1.9.15" \
+      org.luajit.version="2.1.0-beta2" \
       org.luarocks.version="2.3.0"
 
 RUN ALPINE__BUILD_DEPS=" \
@@ -79,6 +85,7 @@ RUN ALPINE__BUILD_DEPS=" \
     --with-http_realip_module \
     --with-http_v2_module \
     --with-http_mp4_module \
+    --with-threads \
     -j${NPROC} \
  && echo "docker-build-script: Compiling Openresty" \
  && make -j${NPROC} \
