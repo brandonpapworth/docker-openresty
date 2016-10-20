@@ -1,7 +1,6 @@
 FROM alpine:3.4
 MAINTAINER Brandon Papworth <brandon@papworth.me>
 
-
 ENV OPENRESTY__PREFIX=/usr/local/openresty \
     NGINX__PREFIX=/usr/local/openresty/nginx \
     NGINX__PID_PATH=/var/run/nginx.pid \
@@ -21,7 +20,21 @@ ENV OPENRESTY__PREFIX=/usr/local/openresty \
     NGINX__FCGI__PROXY__TEMP_PATH=/var/tmp/nginx/tmp_fcgi \
     OPENRESTY__CUSTOM_LUA_PATH=/data/openresty/lualib \
     NGINX__ENV__CONF_FILE_PATH=/usr/local/openresty/nginx/conf/env_vars_available.conf \
-    NGINX__ENV__LUA_FILE_PATH=/usr/local/openresty/lualib/generated/env_vars_available.lua
+    NGINX__ENV__LUA_FILE_PATH=/usr/local/openresty/lualib/generated/env_vars_available.lua \
+    NGINX__RESOLVER=8.8.8.8 \
+    NGINX__RESOLVER__CONF_FILE_PATH=/usr/local/openresty/nginx/conf/resolver.conf \
+    NGINX__KEEPALIVE_TIMEOUT=65 \
+    NGINX__KEEPALIVE_TIMEOUT__CONF_FILE_PATH=/usr/local/openresty/nginx/conf/keepalive_timeout.conf
+
+WORKDIR $NGINX__PREFIX/
+
+VOLUME ["/var/run/nginx", "/var/tmp/nginx"]
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+CMD ["nginx"]
+
+COPY artifacts/docker-entrypoint.sh /docker-entrypoint.sh
 
 ENV OPENRESTY__VERSION=1.11.2.1 \
     NGINX__VERSION=1.11.2 \
@@ -56,6 +69,7 @@ RUN ALPINE__CONTAINER_DEPS=" \
     libstdc++ \
     libpq \
     postgresql-dev \
+    git \
 " \
  && echo "docker-build-script: Updating APK and installing build dependencies" \
  && apk update \
@@ -138,16 +152,14 @@ RUN echo "docker-build-script: Creating Openresty directories for build" \
  && rm -rf /root/luarocks* \
  && echo "docker-build-script: Openresty build, installation, and cleanup complete"
 
+RUN luarocks install lua-resty-template \
+ && luarocks install lua-resty-validation \
+ && luarocks install lua-resty-uuid \
+ && luarocks install lua-resty-reqargs \
+ && luarocks install lua-resty-session \
+ && luarocks install lua-resty-http
 
-
-VOLUME ["/var/run/nginx", "/var/tmp/nginx"]
-
-COPY artifacts/docker-entrypoint.sh /docker-entrypoint.sh
-
-ENTRYPOINT ["/docker-entrypoint.sh"]
-
+COPY artifacts/docker-entrypoint-scripts /docker-entrypoint-scripts
 COPY artifacts/env.lua $OPENRESTY__PREFIX/lualib/util/env.lua
 COPY artifacts/nginx.conf $NGINX__PREFIX/conf/nginx.conf
 COPY artifacts/default.conf $NGINX__PREFIX/conf/sites_enabled/default.conf
-
-CMD ["nginx"]
