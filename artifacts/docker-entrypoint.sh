@@ -30,19 +30,27 @@ printf "\n\nreturn _M\n" \
 printf "####\n##  ${__WARNING_LINE_1}\n##  ${__WARNING_LINE_2}\n####\n\n" \
   > ${NGINX__ERROR_LOG__CONF_FILE_PATH}
 printf "error_log  /dev/stderr  ${NGINX__ERROR_LOG_LEVEL};\n" \
-  > ${NGINX__ERROR_LOG__CONF_FILE_PATH}
+  >> ${NGINX__ERROR_LOG__CONF_FILE_PATH}
 
 # Write the NGINX worker connections config file
 printf "####\n##  ${__WARNING_LINE_1}\n##  ${__WARNING_LINE_2}\n####\n\n" \
   > ${NGINX__WORKER_CONNECTIONS__CONF_FILE_PATH}
 printf "worker_connections  ${NGINX__WORKER_CONNECTIONS};\n" \
-  > ${NGINX__WORKER_CONNECTIONS__CONF_FILE_PATH}
+  >> ${NGINX__WORKER_CONNECTIONS__CONF_FILE_PATH}
 
 # Write the NGINX worker connections config file
 printf "####\n##  ${__WARNING_LINE_1}\n##  ${__WARNING_LINE_2}\n####\n\n" \
   > ${NGINX__WORKER_PROCESSES__CONF_FILE_PATH}
 printf "worker_processes  ${NGINX__WORKER_PROCESSES};\n" \
-  > ${NGINX__WORKER_PROCESSES__CONF_FILE_PATH}
+  >> ${NGINX__WORKER_PROCESSES__CONF_FILE_PATH}
+
+# Write the NGINX worker connections config file
+printf "####\n##  ${__WARNING_LINE_1}\n##  ${__WARNING_LINE_2}\n####\n\n" \
+  > ${NGINX__HTTP__LOG_CONFIG__ACCESS__CONF_FILE_PATH}
+printf "access_log  ${NGINX__HTTP__LOG_CONFIG__ACCESS};\n" \
+  >> ${NGINX__HTTP__LOG_CONFIG__ACCESS__CONF_FILE_PATH}
+
+
 
 # Create the caching directories if they do not already exist
 if [ ! -d "$NGINX__HTTP__PROXY__TEMP_PATH" ]; then
