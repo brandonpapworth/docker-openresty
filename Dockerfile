@@ -14,7 +14,13 @@ ENV OPENRESTY__PREFIX=/usr/local/openresty \
     NGINX__HTTP__LOG_CONFIG__ACCESS="/dev/stdout  combined" \
     NGINX__HTTP__LOG_PATH__ERROR=/dev/stderr \
     NGINX__RESOLVER=8.8.8.8 \
-    NGINX__KEEPALIVE_TIMEOUT=65
+    NGINX__KEEPALIVE_TIMEOUT=65 \
+    NGINX__COMPRESSION_TYPES="text/plain text/css text/javascript text/xml application/json application/x-javascript application/graphql application/x-graphql application/xml application/xml+rss application/x-www-form-urlencoded application/vnd.ms-fontobject application/x-font-ttf font/opentype image/svg+xml image/x-icon" \
+    NGINX__BROTLI=on \
+    NGINX__BROTLI_STATIC=off \
+    NGINX__BROTLI_COMP_LEVEL=6 \
+    NGINX__BROTLI_WINDOW=512k \
+    NGINX__BROTLI_MIN_LENGTH=20
 
 ENV NGINX__PREFIX="$OPENRESTY__PREFIX/nginx"
 
@@ -24,6 +30,8 @@ ENV NGINX__CONF_PREFIX="$NGINX__PREFIX/conf" \
 WORKDIR $NGINX__PREFIX/
 
 VOLUME ["/var/run/nginx", "/var/lock/nginx", "/var/tmp/nginx", "/var/log/nginx"]
+
+COPY ["artifacts/docker-entrypoint.sh", "/"]
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
@@ -41,9 +49,16 @@ ENV NGINX__PID_PATH="$NGINX__RUN_PREFIX/nginx.pid" \
     NGINX__ENV__CONF_FILE_PATH="$NGINX__CONF_PREFIX/env_vars_available.conf" \
     NGINX__ENV__LUA_FILE_PATH="$OPENRESTY__PREFIX/lualib/generated/env_vars_available.lua" \
     NGINX__RESOLVER__CONF_FILE_PATH="$NGINX__CONF_PREFIX/resolver.conf" \
-    NGINX__KEEPALIVE_TIMEOUT__CONF_FILE_PATH="$NGINX__CONF_PREFIX/keepalive_timeout.conf"
+    NGINX__KEEPALIVE_TIMEOUT__CONF_FILE_PATH="$NGINX__CONF_PREFIX/keepalive_timeout.conf" \
+    NGINX__GZIP_TYPES__CONF_FILE_PATH="$NGINX__CONF_PREFIX/gzip_types.conf" \
+    NGINX__BROTLI__CONF_FILE_PATH="$NGINX__CONF_PREFIX/brotli.conf" \
+    NGINX__BROTLI_STATIC__CONF_FILE_PATH="$NGINX__CONF_PREFIX/brotli_static.conf" \
+    NGINX__BROTLI_COMP_LEVEL__CONF_FILE_PATH="$NGINX__CONF_PREFIX/brotli_comp_level.conf" \
+    NGINX__BROTLI_WINDOW__CONF_FILE_PATH="$NGINX__CONF_PREFIX/brotli_window.conf" \
+    NGINX__BROTLI_MIN_LENGTH__CONF_FILE_PATH="$NGINX__CONF_PREFIX/brotli_min_length.conf" \
+    NGINX__BROTLI_TYPES__CONF_FILE_PATH="$NGINX__CONF_PREFIX/brotli_types.conf"
 
-COPY ["artifacts/docker-entrypoint.sh", "artifacts/docker-entrypoint-scripts", "/"]
+COPY ["artifacts/docker-entrypoint-scripts", "/docker-entrypoint-scripts"]
 
 ENV OPENRESTY__VERSION=1.11.2.1 \
     NGINX__VERSION=1.11.2 \
@@ -79,6 +94,9 @@ RUN ALPINE__CONTAINER_DEPS=" \
     libpq \
     postgresql-dev \
     git \
+    libtool \
+    autoconf \
+    automake \
 " \
  && echo "docker-build-script: Updating APK and installing build dependencies" \
  && apk update \
@@ -86,7 +104,24 @@ RUN ALPINE__CONTAINER_DEPS=" \
  && apk add $ALPINE__CONTAINER_DEPS \
  && rm -rf /var/cache/apk/*
 
-RUN echo "docker-build-script: Creating Openresty directories for build" \
+RUN echo "docker-build-script: Downloading and extracting libbrotli" \
+ && cd /root \
+ && git clone https://github.com/bagder/libbrotli \
+ && cd /root/libbrotli \
+ && echo "docker-build-script: Configuring libbrotli" \
+ && ./autogen.sh \
+ && ./configure \
+ && echo "docker-build-script: Compiling libbrotli" \
+ && make \
+ && echo "docker-build-script: Installing libbrotli" \
+ && make install \
+ && echo "docker-build-script: Deleting libbrotli source" \
+ && cd /root \
+ && rm -rf /root/libbrotli \
+ && echo "docker-build-script: Downloading and extracting ngx_brotli" \
+ && cd /root \
+ && git clone https://github.com/google/ngx_brotli \
+ && echo "docker-build-script: Creating Openresty directories for build" \
  && mkdir -p /root/openresty \
  && cd /root/openresty \
  && echo "docker-build-script: Downloading and extracting Openresty" \
@@ -116,6 +151,7 @@ RUN echo "docker-build-script: Creating Openresty directories for build" \
     --with-http_mp4_module \
     --with-http_postgres_module \
     --with-threads \
+    --add-module=/root/ngx_brotli \
     -j${NPROC} \
  && echo "docker-build-script: Compiling Openresty" \
  && make -j${NPROC} \
