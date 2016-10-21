@@ -47,11 +47,13 @@ COPY ["artifacts/docker-entrypoint.sh", "artifacts/docker-entrypoint-scripts", "
 
 ENV OPENRESTY__VERSION=1.11.2.1 \
     NGINX__VERSION=1.11.2 \
-    LUAJIT__VERSION=2.1.0-beta2
+    LUAJIT__VERSION=2.1.0-beta2 \
+    LUAROCKS__VERSION=2.4.1
 
 LABEL org.openresty.version="1.11.2.1" \
       org.nginx.version="1.11.2" \
-      org.luajit.version="2.1.0-beta2"
+      org.luajit.version="2.1.0-beta2" \
+      org.luarocks.version="2.4.1"
 
 RUN ALPINE__CONTAINER_DEPS=" \
     libpcrecpp \
@@ -127,12 +129,8 @@ RUN echo "docker-build-script: Creating Openresty directories for build" \
  && echo "docker-build-script: Creating folder '$OPENRESTY__PREFIX/lualib/generated' for runtime-generated lua files" \
  && mkdir -p $OPENRESTY__PREFIX/lualib/generated \
  && echo "docker-build-script: Creating folder '$OPENRESTY__CUSTOM_LUA_PATH' for custom lua libraries" \
- && mkdir -p $OPENRESTY__CUSTOM_LUA_PATH
-
-ENV LUAROCKS__VERSION=2.4.1
-LABEL org.luarocks.version="2.4.1"
-
-RUN echo "docker-build-script: Downloading and extracting LuaRocks" \
+ && mkdir -p $OPENRESTY__CUSTOM_LUA_PATH \
+ && echo "docker-build-script: Downloading and extracting LuaRocks" \
  && cd /root \
  && curl -sSL http://keplerproject.github.io/luarocks/releases/luarocks-${LUAROCKS__VERSION}.tar.gz | tar -zxp \
  && mv /root/luarocks-${LUAROCKS__VERSION} /root/luarocks \
