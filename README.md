@@ -23,6 +23,12 @@ global settings via environment variables.
 | `NGINX__FCGI__PROXY__TEMP_PATH`       | `/var/tmp/nginx/tmp_fcgi`        |
 | `NGINX__RESOLVER`                     | `8.8.8.8`                        |
 | `NGINX__KEEPALIVE_TIMEOUT`            | `65`                             |
+| `NGINX__COMPRESSION_TYPES`            | `text/plain text/css ...`        |
+| `NGINX__BROTLI`                       | `on`                             |
+| `NGINX__BROTLI_STATIC`                | `off`                            |
+| `NGINX__BROTLI_COMP_LEVEL`            | `6`                              |
+| `NGINX__BROTLI_WINDOW`                | `512k`                           |
+| `NGINX__BROTLI_MIN_LENGTH`            | `20`                             |
 
 ## Extra Lua Libraries Installed:
   - lua-resty-template
