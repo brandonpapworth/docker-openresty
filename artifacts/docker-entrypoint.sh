@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eo pipefail
+set -e
 
 for SCRIPTFILE in /docker-entrypoint-scripts/generate-nginx-conf-includes/*
 do

@@ -1,12 +1,22 @@
-FROM alpine:3.4
+# Based off Dockerfile - Debian Jessie
+# from https://github.com/openresty/docker-openresty/blob/1.11.2.2/jessie/Dockerfile
+
+FROM debian:jessie
+
 MAINTAINER Brandon Papworth <brandon@papworth.me>
 
-ENV OPENRESTY__PREFIX=/usr/local/openresty \
+ARG RESTY_PREFIX="/usr/local/openresty"
+ARG RESTY_J="1"
+
+ENV PATH="$PATH:$RESTY_PREFIX/nginx/sbin:$RESTY_PREFIX/bin:$RESTY_PREFIX/luajit/bin" \
+    OPENRESTY__PREFIX="$RESTY_PREFIX" \
+    OPENRESTY__CUSTOM_LUA_PATH=/data/openresty/lualib \
+    NGINX__PREFIX="$RESTY_PREFIX/nginx" \
+    NGINX__CONF_PREFIX="$RESTY_PREFIX/nginx/conf" \
     NGINX__RUN_PREFIX=/var/run/nginx \
     NGINX__LOCK_PREFIX=/var/lock/nginx \
     NGINX__TMP_PREFIX=/var/tmp/nginx \
     NGINX__LOG_PREFIX=/var/log/nginx \
-    OPENRESTY__CUSTOM_LUA_PATH=/data/openresty/lualib \
     NGINX__ERROR_LOG_LEVEL=info \
     NGINX__WORKER_CONNECTIONS=2048 \
     NGINX__WORKER_PROCESSES=1 \
@@ -21,21 +31,6 @@ ENV OPENRESTY__PREFIX=/usr/local/openresty \
     NGINX__BROTLI_COMP_LEVEL=6 \
     NGINX__BROTLI_WINDOW=512k \
     NGINX__BROTLI_MIN_LENGTH=20
-
-ENV NGINX__PREFIX="$OPENRESTY__PREFIX/nginx"
-
-ENV NGINX__CONF_PREFIX="$NGINX__PREFIX/conf" \
-    PATH="$PATH:$NGINX__PREFIX/sbin:$OPENRESTY__PREFIX/bin:$OPENRESTY__PREFIX/luajit/bin"
-
-WORKDIR $NGINX__PREFIX/
-
-VOLUME ["/var/run/nginx", "/var/lock/nginx", "/var/tmp/nginx", "/var/log/nginx"]
-
-COPY ["artifacts/docker-entrypoint.sh", "/"]
-
-ENTRYPOINT ["/docker-entrypoint.sh"]
-
-CMD ["nginx"]
 
 ENV NGINX__PID_PATH="$NGINX__RUN_PREFIX/nginx.pid" \
     NGINX__LOCK_PATH="$NGINX__LOCK_PREFIX/nginx.lock" \
@@ -58,135 +53,132 @@ ENV NGINX__PID_PATH="$NGINX__RUN_PREFIX/nginx.pid" \
     NGINX__BROTLI_MIN_LENGTH__CONF_FILE_PATH="$NGINX__CONF_PREFIX/brotli_min_length.conf" \
     NGINX__BROTLI_TYPES__CONF_FILE_PATH="$NGINX__CONF_PREFIX/brotli_types.conf"
 
-COPY ["artifacts/docker-entrypoint-scripts", "/docker-entrypoint-scripts"]
+WORKDIR $NGINX__PREFIX/
 
-ENV OPENRESTY__VERSION=1.11.2.1 \
-    NGINX__VERSION=1.11.2 \
-    LUAJIT__VERSION=2.1.0-beta2 \
-    LUAROCKS__VERSION=2.4.1
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
-LABEL org.openresty.version="1.11.2.1" \
+CMD ["nginx"]
+
+ARG RESTY_VERSION="1.11.2.2"
+ARG RESTY_LUAROCKS_VERSION="2.3.0"
+ARG RESTY_OPENSSL_VERSION="1.0.2j"
+ARG RESTY_PCRE_VERSION="8.39"
+
+LABEL org.openresty.version="1.11.2.2" \
       org.nginx.version="1.11.2" \
-      org.luajit.version="2.1.0-beta2" \
-      org.luarocks.version="2.4.1"
+      org.luarocks.version="2.3.0"
 
-RUN ALPINE__CONTAINER_DEPS=" \
-    libpcrecpp \
-    libpcre16 \
-    libpcre32 \
-    musl-dev \
-    pcre-dev \
-    openssl-dev \
-    zlib-dev \
-    ncurses-dev \
-    readline-dev \
-    curl \
-    unzip \
-    perl \
-    make \
-    gcc \
-    tar \
-    openssl \
-    libssl1.0 \
-    pcre \
-    libgcc \
-    libstdc++ \
-    libpq \
-    postgresql-dev \
-    git \
-    libtool \
-    autoconf \
-    automake \
-" \
- && echo "docker-build-script: Updating APK and installing build dependencies" \
- && apk update \
- && apk upgrade \
- && apk add $ALPINE__CONTAINER_DEPS \
- && rm -rf /var/cache/apk/*
-
-RUN echo "docker-build-script: Downloading and extracting libbrotli" \
- && cd /root \
- && git clone https://github.com/bagder/libbrotli \
- && cd /root/libbrotli \
- && echo "docker-build-script: Configuring libbrotli" \
- && ./autogen.sh \
- && ./configure \
- && echo "docker-build-script: Compiling libbrotli" \
- && make \
- && echo "docker-build-script: Installing libbrotli" \
- && make install \
- && echo "docker-build-script: Deleting libbrotli source" \
- && cd /root \
- && rm -rf /root/libbrotli \
- && echo "docker-build-script: Downloading and extracting ngx_brotli" \
- && cd /root \
- && git clone https://github.com/google/ngx_brotli \
- && echo "docker-build-script: Creating Openresty directories for build" \
- && mkdir -p /root/openresty \
- && cd /root/openresty \
- && echo "docker-build-script: Downloading and extracting Openresty" \
- && curl -sSL http://openresty.org/download/openresty-${OPENRESTY__VERSION}.tar.gz | tar -xvz \
- && cd openresty-* \
- && readonly NPROC=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || 1) \
- && echo "docker-build-script: Configuring Openresty for compilation" \
- && ./configure \
-    --prefix=$OPENRESTY__PREFIX \
-    --http-client-body-temp-path=$NGINX__HTTP__CLIENT_BODY__TEMP_PATH \
-    --http-fastcgi-temp-path=$NGINX__FCGI__PROXY__TEMP_PATH \
-    --http-proxy-temp-path=$NGINX__HTTP__PROXY__TEMP_PATH \
-    --http-log-path=$NGINX__HTTP__LOG_PATH__ACCESS \
-    --error-log-path=$NGINX__HTTP__LOG_PATH__ERROR \
-    --pid-path=$NGINX__PID_PATH \
-    --lock-path=$NGINX__LOCK_PATH \
-    --with-luajit \
-    --with-pcre-jit \
-    --with-ipv6 \
-    --with-stream \
-    --with-stream_ssl_module \
+ARG _RESTY_CONFIG_DEPS="\
+    --with-openssl=/tmp/openssl-${RESTY_OPENSSL_VERSION} \
+    --with-pcre=/tmp/pcre-${RESTY_PCRE_VERSION} \
+    --add-module=/tmp/ngx_brotli \
+    --http-client-body-temp-path=${NGINX__HTTP__CLIENT_BODY__TEMP_PATH} \
+    --http-fastcgi-temp-path=${NGINX__FCGI__PROXY__TEMP_PATH} \
+    --http-proxy-temp-path=${NGINX__HTTP__PROXY__TEMP_PATH} \
+    --http-log-path=${NGINX__HTTP__LOG_PATH__ACCESS} \
+    --error-log-path=${NGINX__HTTP__LOG_PATH__ERROR} \
+    --pid-path=${NGINX__PID_PATH} \
+    --lock-path=${NGINX__LOCK_PATH} \
+    -j${RESTY_J}"
+ARG RESTY_CONFIG_OPTIONS="\
+    --with-file-aio \
+    --with-http_addition_module \
+    --with-http_auth_request_module \
+    --with-http_dav_module \
+    --with-http_flv_module \
+    --with-http_geoip_module=dynamic \
+    --with-http_gunzip_module \
+    --with-http_gzip_static_module \
+    --with-http_image_filter_module=dynamic \
+    --with-http_mp4_module \
+    --with-http_random_index_module \
+    --with-http_realip_module \
+    --with-http_secure_link_module \
+    --with-http_slice_module \
     --with-http_ssl_module \
     --with-http_stub_status_module \
-    --with-http_gzip_static_module \
-    --with-http_realip_module \
+    --with-http_sub_module \
     --with-http_v2_module \
-    --with-http_mp4_module \
-    --with-http_postgres_module \
+    --with-http_xslt_module=dynamic \
+    --with-ipv6 \
+    --with-mail \
+    --with-mail_ssl_module \
+    --with-md5-asm \
+    --with-pcre-jit \
+    --with-sha1-asm \
+    --with-stream \
+    --with-stream_ssl_module \
     --with-threads \
-    --add-module=/root/ngx_brotli \
-    -j${NPROC} \
- && echo "docker-build-script: Compiling Openresty" \
- && make -j${NPROC} \
- && echo "docker-build-script: Installing Openresty" \
- && make install \
- && echo "docker-build-script: Creating normalizing symlinks for Openresty and Lua" \
- && ln -sf $NGINX__PREFIX/sbin/nginx $NGINX__PREFIX/sbin/openresty \
- && ln -sf $OPENRESTY__PREFIX/luajit/bin/luajit-* $OPENRESTY__PREFIX/luajit/bin/lua \
- && echo "docker-build-script: Creating folder '$OPENRESTY__PREFIX/lualib/util' for misc utilities" \
- && mkdir -p $OPENRESTY__PREFIX/lualib/util \
- && echo "docker-build-script: Creating folder '$OPENRESTY__PREFIX/lualib/generated' for runtime-generated lua files" \
- && mkdir -p $OPENRESTY__PREFIX/lualib/generated \
- && echo "docker-build-script: Creating folder '$OPENRESTY__CUSTOM_LUA_PATH' for custom lua libraries" \
- && mkdir -p $OPENRESTY__CUSTOM_LUA_PATH \
- && echo "docker-build-script: Downloading and extracting LuaRocks" \
- && cd /root \
- && curl -sSL http://keplerproject.github.io/luarocks/releases/luarocks-${LUAROCKS__VERSION}.tar.gz | tar -zxp \
- && mv /root/luarocks-${LUAROCKS__VERSION} /root/luarocks \
- && cd /root/luarocks \
- && echo "docker-build-script: Configuring LuaRocks for compilation" \
+    "
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            libgd-dev \
+            libgeoip-dev \
+            libncurses5-dev \
+            libperl-dev \
+            libreadline-dev \
+            libxslt1-dev \
+            make \
+            perl \
+            unzip \
+            zlib1g-dev \
+            git \
+            libtool \
+            autoconf \
+            automake \
+            autotools-dev \
+ && cd /tmp \
+ && git clone https://github.com/google/ngx_brotli \
+ && cd /tmp/ngx_brotli \
+ && git submodule update --init \
+ && cd /tmp \
+ && git clone https://github.com/bagder/libbrotli \
+ && cd /tmp/libbrotli \
+ && git submodule update --init \
+ && ./autogen.sh \
  && ./configure \
-    --prefix=${OPENRESTY__PREFIX}/luajit \
-    --with-lua=${OPENRESTY__PREFIX}/luajit \
-    --lua-suffix=jit-${LUAJIT__VERSION} \
-    --with-lua-include=${OPENRESTY__PREFIX}/luajit/include/luajit-2.1 \
- && echo "docker-build-script: Compiling LuaRocks" \
  && make \
- && echo "docker-build-script: Installing LuaRocks" \
  && make install \
- && ln -s ${OPENRESTY__PREFIX}/luajit/bin/luarocks /usr/bin/luarocks \
- && echo "docker-build-script: Cleaning up..." \
- && cd / \
- && rm -rf /root/openresty* \
- && rm -rf /root/luarocks* \
- && echo "docker-build-script: Openresty build, installation, and cleanup complete"
+ && cd /tmp \
+ && rm -rf /tmp/libbrotli \
+ && curl -fSL https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
+ && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
+ && curl -fSL https://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+ && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
+ && curl -fSL https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
+ && tar xzf openresty-${RESTY_VERSION}.tar.gz \
+ && cd /tmp/openresty-${RESTY_VERSION} \
+ && ./configure ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} \
+ && make \
+ && make install \
+ && mkdir -p $OPENRESTY__PREFIX/lualib/util \
+ && mkdir -p $OPENRESTY__PREFIX/lualib/generated \
+ && mkdir -p $OPENRESTY__CUSTOM_LUA_PATH \
+ && cd /tmp \
+ && rm -rf \
+    openssl-${RESTY_OPENSSL_VERSION} \
+    openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
+    openresty-${RESTY_VERSION}.tar.gz openresty-${RESTY_VERSION} \
+    pcre-${RESTY_PCRE_VERSION}.tar.gz pcre-${RESTY_PCRE_VERSION} \
+ && curl -fSL http://luarocks.org/releases/luarocks-${RESTY_LUAROCKS_VERSION}.tar.gz -o luarocks-${RESTY_LUAROCKS_VERSION}.tar.gz \
+ && tar xzf luarocks-${RESTY_LUAROCKS_VERSION}.tar.gz \
+ && cd luarocks-${RESTY_LUAROCKS_VERSION} \
+ && ./configure \
+    --prefix=/usr/local/openresty/luajit \
+    --with-lua=/usr/local/openresty/luajit \
+    --lua-suffix=jit-2.1.0-beta2 \
+    --with-lua-include=/usr/local/openresty/luajit/include/luajit-2.1 \
+ && make build \
+ && make install \
+ && cd /tmp \
+ && rm -rf luarocks-${RESTY_LUAROCKS_VERSION} luarocks-${RESTY_LUAROCKS_VERSION}.tar.gz \
+ && DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+VOLUME ["/var/run/nginx", "/var/lock/nginx", "/var/tmp/nginx", "/var/log/nginx"]
 
 RUN echo "docker-build-script: Downloading and installing LuaRocks includes" \
  && luarocks install lua-resty-template \
@@ -199,3 +191,6 @@ RUN echo "docker-build-script: Downloading and installing LuaRocks includes" \
 COPY artifacts/env.lua $OPENRESTY__PREFIX/lualib/util/env.lua
 COPY artifacts/nginx.conf $NGINX__PREFIX/conf/nginx.conf
 COPY artifacts/default.conf $NGINX__PREFIX/conf/sites_enabled/default.conf
+
+COPY ["artifacts/docker-entrypoint.sh", "/"]
+COPY ["artifacts/docker-entrypoint-scripts", "/docker-entrypoint-scripts"]
