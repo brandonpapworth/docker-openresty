@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eo pipefail
+set -e
 
 # Create the caching directories if they do not already exist
 if [ ! -d "$NGINX__HTTP__PROXY__TEMP_PATH" ]; then
